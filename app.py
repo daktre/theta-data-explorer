@@ -32,51 +32,51 @@ individual_df = load_csv("theta_individual.csv")
 # --------------------------------------------------
 # Helper: generic filtering
 # --------------------------------------------------
-def apply_filters(df):
+ddef apply_filters(df, label):
     filtered_df = df.copy()
 
-    with st.sidebar:
-        st.markdown("### Filters")
+    st.markdown("#### Filters")
 
-        for col in df.columns:
+    for col in df.columns:
 
-            # Skip columns that are entirely missing
-            if df[col].dropna().empty:
+        # Skip empty columns
+        if df[col].dropna().empty:
+            continue
+
+        # Skip very wide text columns
+        if df[col].dtype == "object" and df[col].nunique() > 50:
+            continue
+
+        # Categorical
+        if df[col].dtype == "object":
+            options = sorted(df[col].dropna().unique())
+            selected = st.multiselect(
+                col,
+                options,
+                default=options,
+                key=f"{label}_{col}"
+            )
+            filtered_df = filtered_df[filtered_df[col].isin(selected)]
+
+        # Numeric
+        elif pd.api.types.is_numeric_dtype(df[col]):
+            min_val = df[col].min()
+            max_val = df[col].max()
+
+            if pd.isna(min_val) or pd.isna(max_val) or min_val == max_val:
                 continue
 
-            # Skip very wide text columns
-            if df[col].dtype == "object" and df[col].nunique() > 50:
-                continue
-
-            # Categorical / string columns
-            if df[col].dtype == "object":
-                options = sorted(df[col].dropna().unique())
-                selected = st.multiselect(
-                    f"{col}",
-                    options,
-                    default=options
-                )
-                filtered_df = filtered_df[filtered_df[col].isin(selected)]
-
-            # Numeric columns
-            elif pd.api.types.is_numeric_dtype(df[col]):
-                min_val = df[col].min()
-                max_val = df[col].max()
-
-                # Skip constants (min == max)
-                if pd.isna(min_val) or pd.isna(max_val) or min_val == max_val:
-                    continue
-
-                selected = st.slider(
-                    f"{col}",
-                    float(min_val),
-                    float(max_val),
-                    (float(min_val), float(max_val))
-                )
-                filtered_df = filtered_df[
-                    (filtered_df[col] >= selected[0]) &
-                    (filtered_df[col] <= selected[1])
-                ]
+            selected = st.slider(
+                col,
+                float(min_val),
+                float(max_val),
+                (float(min_val), float(max_val)),
+                key=f"{label}_{col}"
+            )
+            filtered_df = filtered_df[
+                (filtered_df[col] >= selected[0]) &
+                (filtered_df[col] <= selected[1])
+            ]
 
     return filtered_df
 
@@ -92,67 +92,38 @@ tab_settlement, tab_household, tab_individual, tab_about = st.tabs(
 # --------------------------------------------------
 with tab_settlement:
     st.subheader("Settlements")
-    st.info(
-        "Each row represents one settlement (village). "
-        "Variables here describe village-level context and characteristics."
-    )
+    st.info("Each row represents one settlement (village).")
 
-    filtered = apply_filters(settlement_df)
+    with st.expander("Filters", expanded=False):
+        filtered = apply_filters(settlement_df, "settlement")
 
-    st.write(f"**Rows shown:** {len(filtered)}")
-    st.dataframe(filtered, use_container_width=True)
-
-    st.download_button(
-        "Download filtered settlement data (CSV)",
-        filtered.to_csv(index=False),
-        file_name="theta_settlement_filtered.csv",
-        mime="text/csv"
-    )
-
+    st.write(f"Rows shown: {len(filtered)}")
+    st.dataframe(filtered, width="stretch")
 # --------------------------------------------------
 # Households tab
 # --------------------------------------------------
 with tab_household:
     st.subheader("Households")
-    st.info(
-        "Each row represents one household. "
-        "Households are linked to settlements using `deidentified_village`."
-    )
+    st.info("Each row represents one household.")
 
-    filtered = apply_filters(household_df)
+    with st.expander("Filters", expanded=False):
+        filtered = apply_filters(household_df, "household")
 
-    st.write(f"**Rows shown:** {len(filtered)}")
-    st.dataframe(filtered, use_container_width=True)
-
-    st.download_button(
-        "Download filtered household data (CSV)",
-        filtered.to_csv(index=False),
-        file_name="theta_household_filtered.csv",
-        mime="text/csv"
-    )
+    st.write(f"Rows shown: {len(filtered)}")
+    st.dataframe(filtered, width="stretch")
 
 # --------------------------------------------------
 # Individuals tab
 # --------------------------------------------------
 with tab_individual:
     st.subheader("Individuals")
-    st.info(
-        "Each row represents one individual. "
-        "Individuals are linked to households using `fulcrum_id_parent`."
-    )
+    st.info("Each row represents one individual.")
 
-    filtered = apply_filters(individual_df)
+    with st.expander("Filters", expanded=False):
+        filtered = apply_filters(individual_df, "individual")
 
-    st.write(f"**Rows shown:** {len(filtered)}")
-    st.dataframe(filtered, use_container_width=True)
-
-    st.download_button(
-        "Download filtered individual data (CSV)",
-        filtered.to_csv(index=False),
-        file_name="theta_individual_filtered.csv",
-        mime="text/csv"
-    )
-
+    st.write(f"Rows shown: {len(filtered)}")
+    st.dataframe(filtered, width="stretch")
 # --------------------------------------------------
 # About tab
 # --------------------------------------------------
