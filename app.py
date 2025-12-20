@@ -32,7 +32,7 @@ individual_df = load_csv("theta_individual.csv")
 # --------------------------------------------------
 # Helper: generic filtering
 # --------------------------------------------------
-ddef apply_filters(df, label):
+def apply_filters(df, label):
     filtered_df = df.copy()
 
     st.markdown("#### Filters")
