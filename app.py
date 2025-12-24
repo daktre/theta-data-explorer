@@ -30,11 +30,17 @@ household_df  = load_csv("theta_household.csv")
 individual_df = load_csv("theta_individual.csv")
 
 # --------------------------------------------------
-# Explicit filter whitelists (CRITICAL)
+# Linked filtering context (session state)
 # --------------------------------------------------
-# These are intentionally conservative.
-# More can be added later, deliberately.
+if "selected_settlements" not in st.session_state:
+    st.session_state.selected_settlements = None
 
+if "selected_households" not in st.session_state:
+    st.session_state.selected_households = None
+
+# --------------------------------------------------
+# Explicit filter whitelists
+# --------------------------------------------------
 SETTLEMENT_FILTER_COLS = [
     "deidentified_village"
 ]
@@ -49,7 +55,19 @@ INDIVIDUAL_FILTER_COLS = [
 ]
 
 # --------------------------------------------------
-# Filter helper (deterministic, empty-safe)
+# Clear linked context (global control)
+# --------------------------------------------------
+if (
+    st.session_state.selected_settlements is not None
+    or st.session_state.selected_households is not None
+):
+    if st.button("Clear linked filtering context"):
+        st.session_state.selected_settlements = None
+        st.session_state.selected_households = None
+        st.success("Linked filtering context cleared.")
+
+# --------------------------------------------------
+# Filter helper (explicit, empty-safe)
 # --------------------------------------------------
 def apply_filters(df, label, filter_cols):
     filtered_df = df.copy()
@@ -123,6 +141,15 @@ with tab_settlement:
     st.write(f"Rows shown: {len(filtered)}")
     st.dataframe(filtered, width="stretch")
 
+    if st.button("Use selected settlements to filter households"):
+        st.session_state.selected_settlements = (
+            filtered["deidentified_village"].unique().tolist()
+        )
+        st.success(
+            f"{len(st.session_state.selected_settlements)} settlements "
+            "set as context for households."
+        )
+
 # --------------------------------------------------
 # Households tab
 # --------------------------------------------------
@@ -130,15 +157,38 @@ with tab_household:
     st.subheader("Households")
     st.info("Each row represents one household.")
 
+    df = household_df
+
+    # Apply linked settlement context
+    if st.session_state.selected_settlements is not None:
+        df = df[
+            df["deidentified_village"].isin(
+                st.session_state.selected_settlements
+            )
+        ]
+        st.info(
+            f"Households restricted to "
+            f"{len(st.session_state.selected_settlements)} selected settlements."
+        )
+
     with st.expander("Filters", expanded=False):
         filtered = apply_filters(
-            household_df,
+            df,
             label="household",
             filter_cols=HOUSEHOLD_FILTER_COLS
         )
 
     st.write(f"Rows shown: {len(filtered)}")
     st.dataframe(filtered, width="stretch")
+
+    if st.button("Use selected households to filter individuals"):
+        st.session_state.selected_households = (
+            filtered["fulcrum_id_parent"].unique().tolist()
+        )
+        st.success(
+            f"{len(st.session_state.selected_households)} households "
+            "set as context for individuals."
+        )
 
 # --------------------------------------------------
 # Individuals tab
@@ -147,9 +197,23 @@ with tab_individual:
     st.subheader("Individuals")
     st.info("Each row represents one individual.")
 
+    df = individual_df
+
+    # Apply linked household context
+    if st.session_state.selected_households is not None:
+        df = df[
+            df["fulcrum_id_parent"].isin(
+                st.session_state.selected_households
+            )
+        ]
+        st.info(
+            f"Individuals restricted to "
+            f"{len(st.session_state.selected_households)} selected households."
+        )
+
     with st.expander("Filters", expanded=False):
         filtered = apply_filters(
-            individual_df,
+            df,
             label="individual",
             filter_cols=INDIVIDUAL_FILTER_COLS
         )
@@ -169,6 +233,12 @@ with tab_about:
         the THETA project datasets at three distinct levels of analysis:
         settlements, households, and individuals.
 
-        The datasets used here from the THETA datasets archived on Figshare.
+        Linked filtering is **explicit and opt-in**. Context is passed
+        downward only when the user chooses to do so, and no silent joins
+        are performed.
+
+        The datasets used here are runtime CSV mirrors created from the
+        canonical THETA datasets archived on Figshare. They are provided
+        for exploration and do not replace the archived versions.
         """
     )
