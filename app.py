@@ -3,7 +3,7 @@ import pandas as pd
 from pathlib import Path
 
 # --------------------------------------------------
-# Basic app config
+# App configuration
 # --------------------------------------------------
 st.set_page_config(
     page_title="THETA Data Explorer",
@@ -30,21 +30,37 @@ household_df  = load_csv("theta_household.csv")
 individual_df = load_csv("theta_individual.csv")
 
 # --------------------------------------------------
-# Helper: generic filtering (dataset-scoped, empty-safe)
+# Explicit filter whitelists (CRITICAL)
 # --------------------------------------------------
-def apply_filters(df, label):
+# These are intentionally conservative.
+# More can be added later, deliberately.
+
+SETTLEMENT_FILTER_COLS = [
+    "deidentified_village"
+]
+
+HOUSEHOLD_FILTER_COLS = [
+    "deidentified_village"
+]
+
+INDIVIDUAL_FILTER_COLS = [
+    "sex",
+    "age"
+]
+
+# --------------------------------------------------
+# Filter helper (deterministic, empty-safe)
+# --------------------------------------------------
+def apply_filters(df, label, filter_cols):
     filtered_df = df.copy()
 
     st.markdown("#### Filters")
 
-    for col in df.columns:
-
-        # Skip columns that are entirely missing
-        if df[col].dropna().empty:
+    for col in filter_cols:
+        if col not in df.columns:
             continue
 
-        # Skip very wide text columns
-        if df[col].dtype == "object" and df[col].nunique() > 50:
+        if df[col].dropna().empty:
             continue
 
         # Categorical filters
@@ -57,7 +73,6 @@ def apply_filters(df, label):
                 key=f"{label}_{col}"
             )
 
-            # Apply filter ONLY if something is selected
             if selected:
                 filtered_df = filtered_df[filtered_df[col].isin(selected)]
 
@@ -66,7 +81,6 @@ def apply_filters(df, label):
             min_val = df[col].min()
             max_val = df[col].max()
 
-            # Skip constants or invalid ranges
             if pd.isna(min_val) or pd.isna(max_val) or min_val == max_val:
                 continue
 
@@ -100,7 +114,11 @@ with tab_settlement:
     st.info("Each row represents one settlement (village).")
 
     with st.expander("Filters", expanded=False):
-        filtered = apply_filters(settlement_df, "settlement")
+        filtered = apply_filters(
+            settlement_df,
+            label="settlement",
+            filter_cols=SETTLEMENT_FILTER_COLS
+        )
 
     st.write(f"Rows shown: {len(filtered)}")
     st.dataframe(filtered, width="stretch")
@@ -113,7 +131,11 @@ with tab_household:
     st.info("Each row represents one household.")
 
     with st.expander("Filters", expanded=False):
-        filtered = apply_filters(household_df, "household")
+        filtered = apply_filters(
+            household_df,
+            label="household",
+            filter_cols=HOUSEHOLD_FILTER_COLS
+        )
 
     st.write(f"Rows shown: {len(filtered)}")
     st.dataframe(filtered, width="stretch")
@@ -126,7 +148,11 @@ with tab_individual:
     st.info("Each row represents one individual.")
 
     with st.expander("Filters", expanded=False):
-        filtered = apply_filters(individual_df, "individual")
+        filtered = apply_filters(
+            individual_df,
+            label="individual",
+            filter_cols=INDIVIDUAL_FILTER_COLS
+        )
 
     st.write(f"Rows shown: {len(filtered)}")
     st.dataframe(filtered, width="stretch")
@@ -139,13 +165,10 @@ with tab_about:
         """
         ### About this app
 
-        This app provides a public interface for exploring the
-        THETA project datasets at three levels:
+        This app provides a public, exploratory interface for engaging with
+        the THETA project datasets at three distinct levels of analysis:
         settlements, households, and individuals.
 
-        The CSV files used here are runtime mirrors created from
-        the canonical datasets archived on Figshare. They are
-        provided to enable stable, fast, and reproducible
-        exploration and do not replace the archived versions.
+        The datasets used here from the THETA datasets archived on Figshare.
         """
     )
