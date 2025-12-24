@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 
-
 # --------------------------------------------------
 # Basic app config
 # --------------------------------------------------
@@ -30,15 +29,8 @@ settlement_df = load_csv("theta_settlement.csv")
 household_df  = load_csv("theta_household.csv")
 individual_df = load_csv("theta_individual.csv")
 
-st.markdown("### DEBUG: Data load check")
-
-st.write("Settlement rows:", len(settlement_df))
-st.write("Household rows:", len(household_df))
-st.write("Individual rows:", len(individual_df))
-
-
 # --------------------------------------------------
-# Helper: generic filtering
+# Helper: generic filtering (dataset-scoped, empty-safe)
 # --------------------------------------------------
 def apply_filters(df, label):
     filtered_df = df.copy()
@@ -47,7 +39,7 @@ def apply_filters(df, label):
 
     for col in df.columns:
 
-        # Skip empty columns
+        # Skip columns that are entirely missing
         if df[col].dropna().empty:
             continue
 
@@ -55,7 +47,7 @@ def apply_filters(df, label):
         if df[col].dtype == "object" and df[col].nunique() > 50:
             continue
 
-        # Categorical
+        # Categorical filters
         if df[col].dtype == "object":
             options = sorted(df[col].dropna().unique())
             selected = st.multiselect(
@@ -64,13 +56,17 @@ def apply_filters(df, label):
                 default=options,
                 key=f"{label}_{col}"
             )
-            filtered_df = filtered_df[filtered_df[col].isin(selected)]
 
-        # Numeric
+            # Apply filter ONLY if something is selected
+            if selected:
+                filtered_df = filtered_df[filtered_df[col].isin(selected)]
+
+        # Numeric filters
         elif pd.api.types.is_numeric_dtype(df[col]):
             min_val = df[col].min()
             max_val = df[col].max()
 
+            # Skip constants or invalid ranges
             if pd.isna(min_val) or pd.isna(max_val) or min_val == max_val:
                 continue
 
@@ -81,6 +77,7 @@ def apply_filters(df, label):
                 (float(min_val), float(max_val)),
                 key=f"{label}_{col}"
             )
+
             filtered_df = filtered_df[
                 (filtered_df[col] >= selected[0]) &
                 (filtered_df[col] <= selected[1])
@@ -107,6 +104,7 @@ with tab_settlement:
 
     st.write(f"Rows shown: {len(filtered)}")
     st.dataframe(filtered, width="stretch")
+
 # --------------------------------------------------
 # Households tab
 # --------------------------------------------------
@@ -132,6 +130,7 @@ with tab_individual:
 
     st.write(f"Rows shown: {len(filtered)}")
     st.dataframe(filtered, width="stretch")
+
 # --------------------------------------------------
 # About tab
 # --------------------------------------------------
@@ -144,7 +143,9 @@ with tab_about:
         THETA project datasets at three levels:
         settlements, households, and individuals.
 
-        The CSV files used here are created from the datasets
-    	archived on Figshare. 
+        The CSV files used here are runtime mirrors created from
+        the canonical datasets archived on Figshare. They are
+        provided to enable stable, fast, and reproducible
+        exploration and do not replace the archived versions.
         """
     )
