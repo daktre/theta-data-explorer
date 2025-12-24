@@ -2,11 +2,6 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 
-st.markdown("### DEBUG: Data load check")
-
-st.write("Settlement rows:", len(settlement_df))
-st.write("Household rows:", len(household_df))
-st.write("Individual rows:", len(individual_df))
 
 # --------------------------------------------------
 # Basic app config
@@ -34,6 +29,13 @@ def load_csv(filename):
 settlement_df = load_csv("theta_settlement.csv")
 household_df  = load_csv("theta_household.csv")
 individual_df = load_csv("theta_individual.csv")
+
+st.markdown("### DEBUG: Data load check")
+
+st.write("Settlement rows:", len(settlement_df))
+st.write("Household rows:", len(household_df))
+st.write("Individual rows:", len(individual_df))
+
 
 # --------------------------------------------------
 # Helper: generic filtering
