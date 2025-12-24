@@ -2,6 +2,12 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 
+st.markdown("### DEBUG: Data load check")
+
+st.write("Settlement rows:", len(settlement_df))
+st.write("Household rows:", len(household_df))
+st.write("Individual rows:", len(individual_df))
+
 # --------------------------------------------------
 # Basic app config
 # --------------------------------------------------
